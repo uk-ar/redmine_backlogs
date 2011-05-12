@@ -6,16 +6,16 @@ class Story < Issue
     def self.condition(project, sprint_id, extras=[])
       if sprint_id.nil?  
         c = ["
-          project_id = ?
+          project_id in (?, ?)
           and tracker_id in (?)
           and fixed_version_id is NULL
-          and is_closed = ? ", project.id, Story.trackers, false]
+          and is_closed = ? ", project.id, project.descendants.active.collect{|p| p.id}, Story.trackers, false]
       else
         c = ["
-          project_id = ?
+          project_id in (?, ?)
           and tracker_id in (?)
           and fixed_version_id = ? ",
-          project.id, Story.trackers, sprint_id]
+          project.id ,project.descendants.active.collect{|p| p.id}, Story.trackers, sprint_id]
       end
 
       if extras.size > 0
@@ -63,7 +63,7 @@ class Story < Issue
 
     def self.find_all_updated_since(since, project)
       find(:all,
-           :conditions => ["project_id = ? AND updated_on > ? AND tracker_id in (?)", project, Time.parse(since), trackers],
+           :conditions => ["project_id in (?, ?) AND updated_on > ? AND tracker_id in (?)", project.id,project.descendants.active.collect{|p| p.id}, Time.parse(since), trackers],
            :order => "updated_on ASC")
     end
 
