@@ -30,6 +30,7 @@ class RbStoriesController < RbApplicationController
 
   def update
     story = Story.find(params[:id])
+    params["project_id"]=story[:project_id].to_s
     result = story.update_and_position!(params)
     story.reload
     status = (result ? 200 : 400)
