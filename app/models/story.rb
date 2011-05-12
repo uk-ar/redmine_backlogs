@@ -3,19 +3,19 @@ class Story < Issue
 
     acts_as_list
 
-    def self.condition(project_id, sprint_id, extras=[])
+    def self.condition(project, sprint_id, extras=[])
       if sprint_id.nil?  
         c = ["
           project_id = ?
           and tracker_id in (?)
           and fixed_version_id is NULL
-          and is_closed = ?", project_id, Story.trackers, false]
+          and is_closed = ? ", project.id, Story.trackers, false]
       else
         c = ["
           project_id = ?
           and tracker_id in (?)
-          and fixed_version_id = ?",
-          project_id, Story.trackers, sprint_id]
+          and fixed_version_id = ? ",
+          project.id, Story.trackers, sprint_id]
       end
 
       if extras.size > 0
@@ -29,13 +29,13 @@ class Story < Issue
     # this forces NULLS-LAST ordering
     ORDER = 'case when issues.position is null then 1 else 0 end ASC, case when issues.position is NULL then issues.id else issues.position end ASC'
 
-    def self.backlog(project_id, sprint_id, options={})
+    def self.backlog(project, sprint_id, options={})
       stories = []
 
 
       Story.find(:all,
             :order => Story::ORDER,
-            :conditions => Story.condition(project_id, sprint_id),
+            :conditions => Story.condition(project, sprint_id),
             :joins => :status,
             :limit => options[:limit]).each_with_index {|story, i|
         story.rank = i + 1
@@ -46,11 +46,11 @@ class Story < Issue
     end
 
     def self.product_backlog(project, limit=nil)
-      return Story.backlog(project.id, nil, :limit => limit)
+      return Story.backlog(project, nil, :limit => limit)
     end
 
     def self.sprint_backlog(sprint, options={})
-      return Story.backlog(sprint.project.id, sprint.id, options)
+      return Story.backlog(sprint.project, sprint.id, options)
     end
 
     def self.create_and_position(params)
@@ -61,9 +61,9 @@ class Story < Issue
       return s
     end
 
-    def self.find_all_updated_since(since, project_id)
+    def self.find_all_updated_since(since, project)
       find(:all,
-           :conditions => ["project_id = ? AND updated_on > ? AND tracker_id in (?)", project_id, Time.parse(since), trackers],
+           :conditions => ["project_id = ? AND updated_on > ? AND tracker_id in (?)", project, Time.parse(since), trackers],
            :order => "updated_on ASC")
     end
 
@@ -175,10 +175,10 @@ class Story < Issue
     return @rank
   end
 
-  def self.at_rank(project_id, sprint_id, rank)
+  def self.at_rank(project, sprint_id, rank)
     return Story.find(:first,
                       :order => Story::ORDER,
-                      :conditions => Story.condition(project_id, sprint_id),
+                      :conditions => Story.condition(project, sprint_id),
                       :joins => :status,
                       :limit => 1,
                       :offset => rank - 1)
